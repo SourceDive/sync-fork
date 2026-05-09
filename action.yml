@@ -5,6 +5,9 @@ inputs:
   upstream_repo:
     description: 上游仓库，格式 owner/repo（如 spring-projects/spring-ai）
     required: true
+  github_token:
+    description: GitHub Personal Access Token，需要有 repo + workflow 权限
+    required: true
   sync_tags:
     description: 是否同步 tags
     required: false
@@ -23,11 +26,18 @@ runs:
   steps:
     - name: Sync from upstream
       shell: bash
+      env:
+        TOKEN: ${{ inputs.github_token }}
       run: |
         UPSTREAM_URL="https://github.com/${{ inputs.upstream_repo }}.git"
 
         echo "🔗 上游仓库: ${UPSTREAM_URL}"
         echo "📌 当前 fork: $(git remote get-url origin)"
+
+        # 用 PAT 替换 origin URL 以获得完整推送权限
+        ORIGIN_URL=$(git remote get-url origin)
+        REPO_PATH=$(echo "${ORIGIN_URL}" | sed 's|.*github\.com[:/]||; s|\.git$||')
+        git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${REPO_PATH}.git"
 
         git remote add upstream "${UPSTREAM_URL}" 2>/dev/null || git remote set-url upstream "${UPSTREAM_URL}"
 

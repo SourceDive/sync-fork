@@ -39,7 +39,5 @@ jobs:
       - name: Sync from upstream
         uses: SourceDive/sync-fork@v1.1
         with:
-          upstream_repo: ${{ env.UPSTREAM_REPO || github.event.inputs.upstream_repo }}
-          sync_tags: ${{ github.event.inputs.sync_tags || env.SYNC_TAGS || 'true' }}
-          sync_branches: ${{ github.event.inputs.sync_branches || env.SYNC_BRANCHES || 'false' }}
-          target_branch: ${{ env.TARGET_BRANCH || 'main' }}
+          upstream_repo: ${{ env.UPSTREAM_REPO }}
+          github_token: ${{ secrets.SYNC_FORK_TOKEN }}
