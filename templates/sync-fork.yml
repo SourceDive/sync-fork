@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
 
       - name: Sync from upstream
-        uses: SourceDive/sync-fork@v1.1
+        uses: SourceDive/sync-fork@v1
         with:
           upstream_repo: ${{ env.UPSTREAM_REPO }}
           github_token: ${{ secrets.SYNC_FORK_TOKEN }}
