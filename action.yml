@@ -1,0 +1,53 @@
+name: Sync Fork from Upstream
+description: 将上游仓库的 tags 和分支同步到 fork 仓库
+
+inputs:
+  upstream_repo:
+    description: 上游仓库，格式 owner/repo（如 spring-projects/spring-ai）
+    required: true
+  sync_tags:
+    description: 是否同步 tags
+    required: false
+    default: 'true'
+  sync_branches:
+    description: 是否同步分支（默认只同步默认分支）
+    required: false
+    default: 'false'
+  target_branch:
+    description: 要同步的分支名，多个用逗号分隔。仅 sync_branches=true 时生效
+    required: false
+    default: 'main'
+
+runs:
+  using: composite
+  steps:
+    - name: Sync from upstream
+      shell: bash
+      run: |
+        UPSTREAM_URL="https://github.com/${{ inputs.upstream_repo }}.git"
+
+        echo "🔗 上游仓库: ${UPSTREAM_URL}"
+        echo "📌 当前 fork: $(git remote get-url origin)"
+
+        git remote add upstream "${UPSTREAM_URL}" 2>/dev/null || git remote set-url upstream "${UPSTREAM_URL}"
+
+        echo "⬇️ 拉取上游 tags..."
+        git fetch upstream --tags --force
+
+        if [ "${{ inputs.sync_tags }}" = "true" ]; then
+          echo "⬆️ 推送 tags 到 fork..."
+          git push origin --tags --force
+          echo "✅ Tags 同步完成"
+        fi
+
+        if [ "${{ inputs.sync_branches }}" = "true" ]; then
+          IFS=',' read -ra BRANCHES <<< "${{ inputs.target_branch }}"
+          for BRANCH in "${BRANCHES[@]}"; do
+            BRANCH=$(echo "$BRANCH" | xargs)
+            echo "⬇️ 拉取上游分支: ${BRANCH}"
+            git fetch upstream "${BRANCH}:upstream-${BRANCH}" --force
+            echo "⬆️ 推送分支到 fork: ${BRANCH}"
+            git push origin "upstream-${BRANCH}:refs/heads/${BRANCH}" --force
+          done
+          echo "✅ 分支同步完成"
+        fi
