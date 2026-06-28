@@ -20,6 +20,12 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+
+# 避免定时任务与手动触发并发执行导致互相覆盖
+concurrency:
+  group: sync-fork-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -36,6 +42,8 @@ jobs:
           github_token: ${{ secrets.SYNC_FORK_TOKEN }}
 ```
 
+> 启用分支同步时，请务必保留 `fetch-depth: 0`，否则 `merge`/`rebase` 无法获得完整历史。
+
 ## 参数
 
 | 参数 | 必填 | 默认值 | 说明 |
@@ -43,5 +51,14 @@ jobs:
 | `upstream_repo` | 是 | — | 上游仓库，格式 `owner/repo` |
 | `github_token` | 是 | — | PAT，需 `repo` + `workflow` 权限 |
 | `sync_tags` | 否 | `true` | 是否同步 tags |
+| `tag_force` | 否 | `false` | 推送 tags 时是否强制覆盖 fork 上同名 tag |
 | `sync_branches` | 否 | `false` | 是否同步分支 |
-| `target_branch` | 否 | `main` | 要同步的分支，多个用逗号分隔 |
+| `target_branch` | 否 | （空）| 要同步的分支，多个用逗号分隔；留空则自动探测上游默认分支 |
+| `branch_sync_mode` | 否 | `merge` | 分支同步方式：`merge` / `rebase` / `force` |
+| `git_user_name` | 否 | `github-actions[bot]` | `merge`/`rebase` 生成提交所用用户名 |
+| `git_user_email` | 否 | `...github-actions[bot]...` | `merge`/`rebase` 生成提交所用邮箱 |
+
+## 分支同步说明
+
+- `merge`（默认）/ `rebase`：会把上游合并进 fork 的同名分支，**保留 fork 自己的提交**；若产生冲突会让任务失败而不是静默覆盖。
+- `force`：用上游分支强制覆盖 fork 同名分支，会**丢弃 fork 上的自有提交**（适合纯镜像场景）。
