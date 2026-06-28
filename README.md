@@ -50,13 +50,17 @@ jobs:
 |---|---|---|---|
 | `upstream_repo` | 是 | — | 上游仓库，格式 `owner/repo` |
 | `github_token` | 是 | — | PAT，需 `repo` + `workflow` 权限 |
-| `sync_tags` | 否 | `true` | 是否同步 tags |
-| `tag_force` | 否 | `false` | 推送 tags 时是否强制覆盖 fork 上同名 tag |
+| `sync_tags` | 否 | `true` | 是否同步 tags（增量推送，仅推送 fork 上缺失的 tag）|
+| `tag_force` | 否 | `false` | 为 `true` 时额外推送 SHA 不一致的同名 tag（强制覆盖）|
 | `sync_branches` | 否 | `false` | 是否同步分支 |
 | `target_branch` | 否 | （空）| 要同步的分支，多个用逗号分隔；留空则自动探测上游默认分支 |
 | `branch_sync_mode` | 否 | `merge` | 分支同步方式：`merge` / `rebase` / `force` |
 | `git_user_name` | 否 | `github-actions[bot]` | `merge`/`rebase` 生成提交所用用户名 |
 | `git_user_email` | 否 | `...github-actions[bot]...` | `merge`/`rebase` 生成提交所用邮箱 |
+
+## Tag 同步说明
+
+tag 采用**增量推送**：先用 `git ls-remote` 取 fork 上已有的 tag，只推送本地（含上游）存在而 fork 缺失的 tag，稳定态下不再每次全量推送。开启 `tag_force` 时，会额外推送同名但 SHA 不同的 tag（强制覆盖）。
 
 ## 分支同步说明
 

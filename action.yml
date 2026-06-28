@@ -75,14 +75,38 @@ runs:
         git fetch upstream --tags --force
 
         if [ "${SYNC_TAGS}" = "true" ]; then
-          if [ "${TAG_FORCE}" = "true" ]; then
-            echo "⬆️ 推送 tags 到 fork（强制覆盖）..."
-            git push origin --tags --force
+          echo "🔎 计算需要增量推送的 tags..."
+
+          # fork 上已存在的 tag: name -> sha（过滤掉注解 tag 的 ^{} 解引用行）
+          declare -A REMOTE_TAG_SHA=()
+          while read -r sha ref; do
+            [ -z "${ref:-}" ] && continue
+            REMOTE_TAG_SHA["${ref#refs/tags/}"]="$sha"
+          done < <(git ls-remote --tags origin | grep -v '\^{}' || true)
+
+          TO_PUSH=()
+          while read -r sha ref; do
+            [ -z "${ref:-}" ] && continue
+            name="${ref#refs/tags/}"
+            existing="${REMOTE_TAG_SHA[$name]:-}"
+            if [ -z "$existing" ]; then
+              TO_PUSH+=("refs/tags/${name}")          # fork 上没有 -> 新增推送
+            elif [ "$existing" != "$sha" ] && [ "${TAG_FORCE}" = "true" ]; then
+              TO_PUSH+=("refs/tags/${name}")          # SHA 不同且允许强制 -> 覆盖
+            fi
+          done < <(git show-ref --tags || true)
+
+          if [ "${#TO_PUSH[@]}" -eq 0 ]; then
+            echo "✅ 没有需要推送的 tag，fork 已是最新"
           else
-            echo "⬆️ 推送 tags 到 fork（保留已存在的同名 tag）..."
-            git push origin --tags
+            echo "⬆️ 增量推送 ${#TO_PUSH[@]} 个 tag 到 fork..."
+            if [ "${TAG_FORCE}" = "true" ]; then
+              git push origin "${TO_PUSH[@]}" --force
+            else
+              git push origin "${TO_PUSH[@]}"
+            fi
+            echo "✅ Tags 同步完成"
           fi
-          echo "✅ Tags 同步完成"
         fi
 
         if [ "${SYNC_BRANCHES}" = "true" ]; then
